@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - id: find
-        run: echo "labs=$(ls -d */ | tr -d / | jq -R . | jq -sc .)" >> "$GITHUB_OUTPUT"
+        run: echo "labs=$(ls -d */lab.sh | xargs -n1 dirname | jq -R . | jq -sc .)" >> "$GITHUB_OUTPUT"
 
   test:
     needs: find
@@ -27,6 +27,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install containerlab
-        run: bash -c "$(curl -sL https://get.containerlab.dev)" -- -v v0.81.1
+        run: bash -c "$(curl -sL https://get.containerlab.dev)" _ -v 0.81.1   # _ is $0 for bash -c
       - name: up, break, fix, down
         run: sudo ./${{ matrix.lab }}/lab.sh test
