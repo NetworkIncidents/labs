@@ -1,0 +1,10 @@
+# The homelab's DNS server (think Pi-hole). Answers for homelab.test only: the lab has no internet,
+# so there is nothing upstream to forward to.
+homelab.test:53 {
+    hosts {
+        10.0.20.53 dns.homelab.test
+        10.0.20.80 web.homelab.test
+    }
+    log
+    errors
+}

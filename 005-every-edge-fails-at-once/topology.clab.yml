@@ -1,0 +1,106 @@
+# Every edge fails at once: a Network Incidents lab. Start it with ./lab.sh up (see README.md).
+name: feature-limit
+topology:
+  nodes:
+    # a visitor on the internet side
+    client:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      exec:
+        - ip addr add 10.0.10.10/24 dev eth1
+        - ip route replace default via 10.0.10.1 dev eth1
+        - ip link set eth0 down
+    # the way in: routes the internet side to the edge network
+    r1:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      labels: {role: router}
+      exec:
+        - ip addr add 10.0.10.1/24 dev eth1
+        - ip addr add 10.0.20.1/24 dev eth2
+        - sysctl -w net.ipv4.ip_forward=1
+        - ip link set eth0 down
+    sw:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      exec:
+        - ip link add br0 type bridge
+        - sh -c 'for p in eth1 eth2 eth3 eth4 eth5 eth6; do ip link set $p master br0; done'
+        - ip link set br0 up
+        - ip link set eth0 down
+    # edge proxies: forward visitors to the origin, load the feature file the generator pushes (limit 200)
+    edge1:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      binds:
+        - configs/edge:/opt/lab:ro
+      exec:
+        - ip addr add 10.0.20.11/24 dev eth1
+        - ip route replace default via 10.0.20.1 dev eth1
+        - ip link set eth0 down
+        - mkdir -p /etc/proxy
+        - sh -c 'nohup python3 /opt/lab/proxy.py >/dev/null 2>&1 &'
+    edge2:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      binds:
+        - configs/edge:/opt/lab:ro
+      exec:
+        - ip addr add 10.0.20.12/24 dev eth1
+        - ip route replace default via 10.0.20.1 dev eth1
+        - ip link set eth0 down
+        - mkdir -p /etc/proxy
+        - sh -c 'nohup python3 /opt/lab/proxy.py >/dev/null 2>&1 &'
+    edge3:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      binds:
+        - configs/edge:/opt/lab:ro
+      exec:
+        - ip addr add 10.0.20.13/24 dev eth1
+        - ip route replace default via 10.0.20.1 dev eth1
+        - ip link set eth0 down
+        - mkdir -p /etc/proxy
+        - sh -c 'nohup python3 /opt/lab/proxy.py >/dev/null 2>&1 &'
+    # the origin web server behind the edges
+    origin:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      binds:
+        - configs/origin/index.html:/srv/index.html
+      exec:
+        - ip addr add 10.0.20.80/24 dev eth1
+        - ip route replace default via 10.0.20.1 dev eth1
+        - ip link set eth0 down
+        - sh -c 'cd /srv && nohup python3 -m http.server 80 >/dev/null 2>&1 &'
+    # the feature-file generator, with the two database replicas it reads (sqlite files in /data)
+    gen:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      binds:
+        - configs/gen:/opt/lab:ro
+      exec:
+        - ip addr add 10.0.20.5/24 dev eth1
+        - ip route replace default via 10.0.20.1 dev eth1
+        - ip link set eth0 down
+        - mkdir -p /data /opt/featuregen
+        - cp /opt/lab/featuregen /opt/lab/dbq /usr/local/bin/
+        - cp /opt/lab/query.sql /opt/featuregen/query.sql
+        - python3 /opt/lab/seed.py
+        - featuregen start
+  # listed from the client outward; containerlab defaults veths to 9500
+  links:
+    - endpoints: ["client:eth1", "r1:eth1"]
+      mtu: 1500
+    - endpoints: ["r1:eth2", "sw:eth1"]
+      mtu: 1500
+    - endpoints: ["sw:eth2", "edge1:eth1"]
+      mtu: 1500
+    - endpoints: ["sw:eth3", "edge2:eth1"]
+      mtu: 1500
+    - endpoints: ["sw:eth4", "edge3:eth1"]
+      mtu: 1500
+    - endpoints: ["sw:eth5", "origin:eth1"]
+      mtu: 1500
+    - endpoints: ["sw:eth6", "gen:eth1"]
+      mtu: 1500

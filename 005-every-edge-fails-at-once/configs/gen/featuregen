@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+"""Lab feature-file generator. `featuregen start` runs `featuregen run` in the background. `featuregen run` builds the feature file from a database replica every
+20 seconds (replica-a and replica-b in turn) and pushes it to every edge. `featuregen push FILE` pushes one
+file by hand. Options for run: --max-features N (don't push a bigger file), --canary EDGE (push there first,
+push the rest only if it still serves)."""
+import argparse, glob, os, re, sqlite3, subprocess, sys, time, urllib.request
+
+QUERY = "/opt/featuregen/query.sql"
+ARCHIVE = "/var/lib/featuregen"
+LOG = "/var/log/featuregen.log"
+EDGES = {"edge1": "10.0.20.11", "edge2": "10.0.20.12", "edge3": "10.0.20.13"}
+INTERVAL = 20
+
+
+def log(msg):
+    with open(LOG, "a") as f:
+        f.write(time.strftime("%H:%M:%S ") + msg + "\n")
+
+
+def push(edge, text):
+    req = urllib.request.Request(f"http://{EDGES[edge]}:9000/features", data=text.encode(), method="PUT")
+    try:
+        with urllib.request.urlopen(req, timeout=3) as r:
+            return r.read().decode().strip()
+    except OSError as e:
+        return f"push failed: {e}"
+
+
+def serves(edge):
+    try:
+        with urllib.request.urlopen(f"http://{EDGES[edge]}/", timeout=3) as r:
+            return r.status == 200
+    except Exception:
+        return False
+
+
+def build(version):
+    replica = "replica-a" if version % 2 else "replica-b"
+    db = sqlite3.connect(f"/data/{replica}.db")
+    rows = db.execute(open(QUERY).read()).fetchall()
+    db.close()
+    text = f"# version v{version}\n" + "".join(f"{n} {t}\n" for n, t in rows)
+    with open(f"{ARCHIVE}/v{version}.txt", "w") as f:
+        f.write(text)
+    return replica, len(rows), text
+
+
+def run(args):
+    versions = [int(m.group(1)) for p in glob.glob(f"{ARCHIVE}/v*.txt")
+                if (m := re.search(r"v(\d+)\.txt$", p))]
+    version = max(versions, default=0)
+    while True:
+        version += 1
+        replica, count, text = build(version)
+        head = f"v{version} {replica}: {count} features"
+        if args.max_features and count > args.max_features:
+            log(f"{head}, over limit {args.max_features}, not pushed")
+        elif args.canary:
+            push(args.canary, text)
+            if serves(args.canary):
+                rest = [e for e in EDGES if e != args.canary]
+                for e in rest:
+                    push(e, text)
+                log(f"{head}, canary {args.canary} ok, pushed to {' '.join(rest)}")
+            else:
+                log(f"{head}, canary {args.canary} failed, not pushed further")
+        else:
+            failed = [e for e in EDGES if push(e, text).startswith("push failed")]
+            log(f"{head}, pushed to {' '.join(EDGES)}" + (f" (failed: {' '.join(failed)})" if failed else ""))
+        time.sleep(INTERVAL)
+
+
+def main():
+    p = argparse.ArgumentParser(prog="featuregen")
+    sub = p.add_subparsers(dest="cmd", required=True)
+    for name in ("run", "start"):
+        r = sub.add_parser(name)
+        r.add_argument("--max-features", type=int)
+        r.add_argument("--canary", choices=EDGES)
+    sub.add_parser("push").add_argument("file")
+    args = p.parse_args()
+    os.makedirs(ARCHIVE, exist_ok=True)
+    if args.cmd == "run":
+        run(args)
+    elif args.cmd == "start":
+        p = subprocess.Popen([sys.argv[0], "run"] + sys.argv[2:], start_new_session=True,
+                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        print(f"featuregen started (pid {p.pid}): a new file every {INTERVAL} s")
+        print(f"  max features: {args.max_features or 'no limit'}")
+        print(f"  canary:       {args.canary or 'none, push to ' + ' '.join(EDGES) + ' at once'}")
+    else:
+        text = open(args.file).read()
+        for e in EDGES:
+            print(f"{e}: {push(e, text)}")
+
+
+main()

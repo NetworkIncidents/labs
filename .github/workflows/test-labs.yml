@@ -1,0 +1,32 @@
+# Deploys, breaks, fixes and removes every lab (each folder's ./lab.sh test).
+name: test labs
+on:
+  push: {branches: [main]}
+  pull_request:
+  schedule: [{cron: "0 6 * * 1"}]     # weekly, to catch image or containerlab changes
+  workflow_dispatch:
+
+jobs:
+  find:
+    runs-on: ubuntu-24.04
+    outputs:
+      labs: ${{ steps.find.outputs.labs }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: find
+        run: echo "labs=$(ls -d */ | tr -d / | jq -R . | jq -sc .)" >> "$GITHUB_OUTPUT"
+
+  test:
+    needs: find
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        lab: ${{ fromJson(needs.find.outputs.labs) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install containerlab
+        run: bash -c "$(curl -sL https://get.containerlab.dev)" -- -v v0.81.1
+      - name: up, break, fix, down
+        run: sudo ./${{ matrix.lab }}/lab.sh test
