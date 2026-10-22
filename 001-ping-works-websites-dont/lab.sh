@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Ping works, websites don't - a Network Incidents lab (https://networkincidents.ca)
-# Usage: ./lab.sh up | break | check | hint | fix | test | down
+# Usage: ./lab.sh up | break | check | hint | fix | test | down | dashboard
 # containerlab needs root unless your user can run it without sudo (containerlab's setup script sets that up).
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -48,6 +48,8 @@ case "${1:-}" in
     if (( n >= ${#HINTS[@]} )); then echo "No more hints. ./lab.sh fix shows the fix (see scripts/fix.sh)."; exit 0; fi
     echo "Hint $((n + 1)) of ${#HINTS[@]}: ${HINTS[$n]}"
     echo $((n + 1)) > .hint ;;
+  dashboard)   # optional: the live dashboard from the videos, at http://localhost:8090
+    exec python3 ../dashboard/netviz_lab.py dashboard.json "${@:2}" ;;
   fix)
     ./scripts/fix.sh
     wait_for healthy 60 && echo "Fixed: everything works." || { echo "Still broken: $why" >&2; exit 1; } ;;

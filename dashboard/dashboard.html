@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Network Incidents lab</title>
+<style>
+:root {
+  --bg: #14161c; --panel: #181b22; --ink: #e6e6e6; --dim: #6b7080; --line: #3a3f4c;
+  --amber: #f0a050; --green: #7ee08a; --red: #ff5f5f; --blue: #7aa7ff;
+  --mono: "DejaVu Sans Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font-family: var(--mono); overflow: hidden; }
+#stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
+
+header { position: absolute; left: 40px; right: 40px; top: 24px; height: 48px; display: flex; align-items: center; gap: 28px; font-size: 22px; }
+.chip { background: var(--amber); color: var(--bg); font-weight: bold; padding: 6px 14px; letter-spacing: .06em; }
+.k { color: var(--dim); }
+#health { font-weight: bold; }
+#health.healthy { color: var(--green); } #health.fault { color: var(--red); } #health.nodata { color: var(--dim); }
+#conn { margin-left: auto; font-size: 16px; color: var(--dim); }
+#conn.bad { color: var(--red); }
+header a { color: var(--dim); font-size: 16px; text-decoration: none; }
+header a:hover { color: var(--ink); }
+
+.panel { position: absolute; border: 2px solid var(--amber); background: var(--panel); box-sizing: border-box; }
+.panel.quiet { border-color: var(--line); }
+.panel > h2 { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); margin: 0; padding: 0 12px;
+  background: var(--bg); color: var(--amber); font-size: 20px; white-space: nowrap; }
+.panel.quiet > h2 { color: var(--dim); }
+.inner { position: absolute; inset: 30px 26px 18px; overflow: hidden; }
+
+#topo   { left: 40px;   top: 96px;  width: 1240px; height: 330px; }
+#term   { left: 40px;   top: 456px; width: 1240px; height: 594px; }
+#neigh  { left: 1310px; top: 96px;  width: 570px;  height: 160px; }
+#ifaces { left: 1310px; top: 286px; width: 570px;  height: 270px; }
+#ping   { left: 1310px; top: 586px; width: 570px;  height: 210px; }
+#log    { left: 1310px; top: 826px; width: 570px;  height: 224px; }
+
+/* 120x30 at 16px DejaVu Sans Mono (9.63px advance) = 1156 x 540 */
+#term .inner { inset: 32px 26px 14px; }
+#termtext { margin: 0; font: 16px/18px var(--mono); color: var(--ink); white-space: pre; }
+#termtext .cur { background: var(--ink); color: var(--bg); }
+#termwait { color: var(--dim); font-size: 18px; }
+
+#topo svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+#caption { position: absolute; left: 28px; bottom: 18px; color: var(--amber); font-weight: bold; font-size: 22px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 18px; }
+th { color: var(--dim); font-weight: normal; text-align: left; padding: 0 0 8px; }
+td { padding: 3px 0; white-space: nowrap; }
+.r { text-align: right; }
+.good { color: var(--green); } .badtxt { color: var(--red); } .dimtxt { color: var(--dim); }
+td.mtu.bad { color: var(--red); font-weight: bold; }
+
+.probe + .probe { margin-top: 12px; }
+.phead { display: flex; align-items: baseline; font-size: 19px; margin-bottom: 8px; white-space: nowrap; }
+.phead .who { color: var(--amber); margin-right: 10px; }
+.phead .stat { margin-left: auto; font-weight: bold; }
+.strip { display: flex; gap: 2px; height: 22px; margin-bottom: 10px; }
+.strip i { flex: 1 1 0; background: #262a33; }
+.strip i.ok { background: var(--green); } .strip i.lost { background: var(--red); }
+.plines div { font-size: 14px; line-height: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink); }
+.plines div.lost { color: var(--red); }
+
+#logrows { display: flex; flex-direction: column; justify-content: flex-end; }
+#logrows div { font-size: 16px; line-height: 26px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: none; }
+#logrows .ts { color: var(--dim); margin-right: 12px; } #logrows .who { color: var(--amber); margin-right: 10px; }
+#err { color: var(--red); font-size: 15px; position: absolute; left: 26px; right: 26px; bottom: 10px; }
+
+svg text { font-family: var(--mono); }
+</style>
+</head>
+<body>
+<div id="stage">
+  <header>
+    <span class="chip" id="title">NETWORK INCIDENTS</span>
+    <span><span class="k">lab: </span><span id="lab">-</span></span>
+    <span id="health" class="nodata">● connecting</span>
+    <span id="conn">connecting…</span>
+    <a href="https://networkincidents.ca" target="_blank" rel="noopener">networkincidents.ca</a>
+  </header>
+
+  <section class="panel" id="topo"><h2>topology</h2>
+    <svg id="svg" viewBox="0 0 1240 330" aria-label="lab topology"></svg>
+    <div id="caption"></div>
+  </section>
+
+  <section class="panel" id="term"><h2 id="termtitle">terminal</h2>
+    <div class="inner"><pre id="termtext"></pre><div id="termwait">connecting…</div></div>
+  </section>
+
+  <section class="panel" id="neigh"><h2>OSPF neighbours</h2>
+    <div class="inner"><table><thead><tr><th>node</th><th>neighbour</th><th class="r">state</th></tr></thead>
+    <tbody id="neighrows"></tbody></table></div>
+  </section>
+
+  <section class="panel" id="ifaces"><h2>interfaces</h2>
+    <div class="inner"><table><thead><tr><th>node</th><th>iface</th><th>address</th><th class="r">mtu</th><th class="r">state</th></tr></thead>
+    <tbody id="ifrows"></tbody></table></div>
+  </section>
+
+  <section class="panel" id="ping"><h2>ping</h2>
+    <div class="inner" id="probes"><div class="dimtxt">no ping probes configured</div></div>
+  </section>
+
+  <section class="panel quiet" id="log"><h2>event log</h2>
+    <div class="inner" id="logrows"><div class="dimtxt">waiting for events…</div></div>
+    <div id="err"></div>
+  </section>
+</div>
+
+<script>
+const C = { ink: "#e6e6e6", dim: "#6b7080", amber: "#f0a050", green: "#7ee08a", red: "#ff5f5f", blue: "#7aa7ff", panel: "#181b22" };
+const NS = "http://www.w3.org/2000/svg";
+const $ = id => document.getElementById(id);
+let geom = null, geomKey = "";
+
+function fit() {
+  const s = Math.min(innerWidth / 1920, innerHeight / 1080);
+  $("stage").style.transform = `translate(${(innerWidth - 1920 * s) / 2}px, ${(innerHeight - 1080 * s) / 2}px) scale(${s})`;
+}
+addEventListener("resize", fit); fit();
+
+function el(tag, attrs, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function h(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+// Node positions come in netviz's character grid; map them onto the SVG.
+function buildGeometry(s) {
+  const [gw, gh] = s.grid, W = 1240, H = 330, padX = 40, padY = 24;
+  const cw = (W - 2 * padX) / gw, ch = (H - 2 * padY - 10) / gh;
+  // boxes shrink when a column is packed tight (five devices behind one switch)
+  let gap = Infinity;
+  const pts = Object.values(s.nodes);
+  for (const [x1, y1] of pts) for (const [x2, y2] of pts)
+    if (Math.abs(x1 - x2) < 1 && y1 !== y2) gap = Math.min(gap, Math.abs(y1 - y2) * ch);
+  const BW = 130, BH = Math.min(58, gap - 8), nodes = {};
+  for (const [n, [x, y]] of Object.entries(s.nodes)) {
+    const cx = padX + (x + 6) * cw, cy = padY + (y + 1.5) * ch;
+    nodes[n] = { x: cx - BW / 2, y: cy - BH / 2, w: BW, h: BH, cx, cy };
+  }
+  const svg = $("svg"); svg.replaceChildren();
+  const gLinks = el("g", {}, svg), gPk = el("g", {}, svg), gNodes = el("g", {}, svg);
+  const links = s.links.map(l => {
+    const a = nodes[l.a], b = nodes[l.b];
+    const sx = a.x + a.w, ex = b.x, mid = (sx + ex) / 2;
+    const pts = [[sx, a.cy], [mid, a.cy], [mid, b.cy], [ex, b.cy]];
+    const segs = []; let total = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const len = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+      segs.push({ p0: pts[i - 1], p1: pts[i], len, at: total }); total += len;
+    }
+    const L = { pts, segs, total, dots: [] };
+    L.path = el("polyline", { points: pts.map(p => p.join(",")).join(" "), fill: "none",
+      stroke: C.dim, "stroke-width": 3, "stroke-dasharray": "10 8" }, gLinks);
+    const m = pointAt(L, total / 2);
+    L.x = el("text", { x: m[0], y: m[1] + 9, "text-anchor": "middle", "font-size": 28, fill: C.red, "font-weight": "bold", visibility: "hidden" }, gLinks);
+    L.x.textContent = "╳";
+    // interface + MTU at each end: A end above the line, B end below, clear of the ╳ at the midpoint
+    L.aLab = el("text", { x: sx + 10, y: a.cy - 22, "font-size": 16, fill: C.dim }, gLinks);
+    L.bLab = el("text", { x: ex - 10, y: b.cy + 36, "font-size": 16, fill: C.dim, "text-anchor": "end" }, gLinks);
+    return L;
+  });
+  for (const [n, N] of Object.entries(nodes)) {
+    N.rect = el("rect", { x: N.x, y: N.y, width: N.w, height: N.h, fill: C.panel, stroke: C.amber, "stroke-width": 2.5 }, gNodes);
+    const fs = Math.min(24, N.h - 12);
+    N.label = el("text", { x: N.cx, y: N.cy + fs / 3, "text-anchor": "middle", "font-size": fs, fill: C.amber }, gNodes);
+    N.label.textContent = n;
+  }
+  return { nodes, links, gPk };
+}
+
+function pointAt(L, d) {
+  for (const s of L.segs) {
+    if (d <= s.at + s.len) {
+      const f = s.len ? (d - s.at) / s.len : 0;
+      return [s.p0[0] + (s.p1[0] - s.p0[0]) * f, s.p0[1] + (s.p1[1] - s.p0[1]) * f];
+    }
+  }
+  return L.pts[L.pts.length - 1];
+}
+
+function setLabel(t, name, mtu, bad) {
+  t.replaceChildren();
+  const a = el("tspan", {}, t); a.textContent = name + " · ";
+  const b = el("tspan", { fill: bad ? C.red : C.ink, "font-weight": bad ? "bold" : "normal" }, t);
+  b.textContent = mtu == null ? "?" : mtu;
+}
+
+function render(s) {
+  const key = JSON.stringify([s.grid, s.nodes, s.links.map(l => [l.a, l.b])]);
+  if (key !== geomKey) { geom = buildGeometry(s); geomKey = key; }
+
+  $("title").textContent = s.title || "NETWORK INCIDENTS";
+  $("lab").textContent = s.lab;
+  const hl = $("health");
+  hl.textContent = { healthy: "● healthy", fault: "● FAULT", nodata: "● no data from lab", nolab: "● no lab running" }[s.status];
+  hl.className = s.status === "nolab" ? "nodata" : s.status;
+  $("caption").textContent = s.caption ? "▶ " + s.caption : "";
+  $("err").textContent = s.error ? "poll error: " + s.error : "";
+
+  const hot = new Set(s.links.filter(l => l.fault).flatMap(l => [l.a, l.b]));
+  for (const [n, N] of Object.entries(geom.nodes)) {
+    const col = hot.has(n) ? C.red : C.amber;
+    N.rect.setAttribute("stroke", col); N.label.setAttribute("fill", col);
+  }
+  s.links.forEach((l, i) => {
+    const L = geom.links[i];
+    L.rate = l.rate; L.fault = l.fault;
+    L.path.setAttribute("stroke", l.fault ? C.red : C.dim);
+    L.x.setAttribute("visibility", l.fault ? "visible" : "hidden");
+    setLabel(L.aLab, l.aIf, l.aMtu, l.mismatch);
+    setLabel(L.bLab, l.bIf, l.bMtu, l.mismatch);
+  });
+
+  const nr = $("neighrows"); nr.replaceChildren();
+  for (const [n, rid, st] of (s.neigh.length ? s.neigh : [["-", "-", "-"]])) {
+    const tr = h("tr");
+    tr.append(h("td", "", n), h("td", "", rid), h("td", "r " + (st === "Full" ? "good" : "badtxt"), st));
+    nr.appendChild(tr);
+  }
+
+  const ir = $("ifrows"); ir.replaceChildren();
+  for (const r of s.ifaces) {
+    const tr = h("tr");
+    tr.append(h("td", "", r.node), h("td", "", r.iface), h("td", "", r.addr),
+              h("td", "r mtu" + (r.mismatch ? " bad" : ""), r.mtu == null ? "?" : r.mtu),
+              h("td", "r " + (r.state === "up" ? "good" : "badtxt"), r.state));
+    ir.appendChild(tr);
+  }
+
+  if (s.pings.length) {
+    const box = $("probes"); box.replaceChildren();
+    s.pings.forEach((p, idx) => {
+      const d = h("div", "probe");
+      const head = h("div", "phead");
+      head.append(h("span", "who", p.src), h("span", "", "→ " + p.dst));
+      let stat;
+      if (!p.results.length) stat = h("span", "stat dimtxt", "starting…");
+      else if (p.ok) stat = h("span", "stat good", `● replying · ${p.rtt != null ? p.rtt.toFixed(3) + " ms" : ""}`);
+      else stat = h("span", "stat badtxt", `● no reply${p.downFor != null ? " for " + p.downFor.toFixed(0) + " s" : ""}`);
+      head.appendChild(stat);
+      const strip = h("div", "strip");
+      const res = p.results.slice(-60);
+      for (let i = 0; i < 60 - res.length; i++) strip.appendChild(h("i"));
+      for (const r of res) strip.appendChild(h("i", r ? "ok" : "lost"));
+      d.append(head, strip);
+      if (idx === 0) {                       // raw lines for the first probe only; the panel is narrow
+        const lines = h("div", "plines");
+        for (const ln of p.lines.slice(-4)) {
+          const txt = ln.split("  ").slice(1).join("  ");
+          lines.appendChild(h("div", /no answer|Unreachable|exceeded/.test(txt) ? "lost" : "", txt));
+        }
+        d.appendChild(lines);
+      }
+      box.appendChild(d);
+    });
+  }
+
+  if (s.log.length) {
+    const lg = $("logrows"); lg.replaceChildren();
+    for (const e of s.log.slice(-6)) {               // 6 lines fill the panel without clipping
+      const d = h("div");
+      d.append(h("span", "ts", e.ts), h("span", "who", e.node), document.createTextNode(e.msg + " "),
+               h("span", e.bad == null ? "" : (e.bad ? "badtxt" : "good"), e.state));
+      lg.appendChild(d);
+    }
+  }
+}
+
+// Packets: more dots on busier links; on a faulty link one amber dot dies at the break.
+function animate(now) {
+  if (geom) {
+    const t = now / 1000;
+    for (const L of geom.links) {
+      const want = L.fault ? 1 : (L.rate > 0 ? 1 + Math.floor(L.rate * 3) : 0);
+      while (L.dots.length < want) L.dots.push(el("circle", { r: 7 }, geom.gPk));
+      while (L.dots.length > want) L.dots.pop().remove();
+      L.dots.forEach((c, k) => {
+        let d, col, op = 1;
+        if (L.fault) {
+          const f = (t * 0.6) % 1;
+          d = f * L.total / 2; col = C.amber; op = f > 0.85 ? (1 - f) / 0.15 : 1;
+        } else {
+          d = (t * 140 + k * L.total / want) % L.total; col = k % 2 ? C.green : C.blue;
+        }
+        const [x, y] = pointAt(L, d);
+        c.setAttribute("cx", x); c.setAttribute("cy", y); c.setAttribute("fill", col); c.setAttribute("opacity", op);
+      });
+    }
+  }
+  requestAnimationFrame(animate);
+}
+requestAnimationFrame(animate);
+
+// ---- terminal mirror: tmux capture-pane -e output (SGR colour codes) -> styled spans
+const ANSI16 = ["#2a2e38", "#ff5f5f", "#7ee08a", "#f0a050", "#7aa7ff", "#c792ea", "#6fd3e0", "#c8ccd4",
+                "#6b7080", "#ff7b7b", "#9af0a6", "#ffc078", "#9cc0ff", "#dcb0ff", "#9be8f0", "#ffffff"];
+function xterm256(n) {
+  if (n < 16) return ANSI16[n];
+  if (n >= 232) { const v = 8 + (n - 232) * 10; return `rgb(${v},${v},${v})`; }
+  n -= 16; const c = v => v ? 55 + v * 40 : 0;
+  return `rgb(${c(Math.floor(n / 36))},${c(Math.floor(n / 6) % 6)},${c(n % 6)})`;
+}
+function sgr(st, params) {
+  const p = params === "" ? [0] : params.split(";").map(Number);
+  for (let i = 0; i < p.length; i++) {
+    const v = p[i];
+    if (v === 0) Object.assign(st, { fg: null, bg: null, bold: false, ul: false, inv: false });
+    else if (v === 1) st.bold = true; else if (v === 22) st.bold = false;
+    else if (v === 4) st.ul = true; else if (v === 24) st.ul = false;
+    else if (v === 7) st.inv = true; else if (v === 27) st.inv = false;
+    else if (v >= 30 && v <= 37) st.fg = ANSI16[v - 30]; else if (v >= 90 && v <= 97) st.fg = ANSI16[v - 82];
+    else if (v === 39) st.fg = null;
+    else if (v >= 40 && v <= 47) st.bg = ANSI16[v - 40]; else if (v >= 100 && v <= 107) st.bg = ANSI16[v - 92];
+    else if (v === 49) st.bg = null;
+    else if ((v === 38 || v === 48) && p[i + 1] === 5) { st[v === 38 ? "fg" : "bg"] = xterm256(p[i + 2]); i += 2; }
+    else if ((v === 38 || v === 48) && p[i + 1] === 2) { st[v === 38 ? "fg" : "bg"] = `rgb(${p[i + 2]},${p[i + 3]},${p[i + 4]})`; i += 4; }
+  }
+}
+function styleOf(st) {
+  let fg = st.fg, bg = st.bg;
+  if (st.inv) { [fg, bg] = [bg || C.panel, fg || C.ink]; }
+  return (fg ? `color:${fg};` : "") + (bg ? `background:${bg};` : "") +
+         (st.bold ? "font-weight:bold;" : "") + (st.ul ? "text-decoration:underline;" : "");
+}
+function renderTerm(f) {
+  const pre = $("termtext"), wait = $("termwait");
+  if (!f || !f.live) {
+    pre.replaceChildren(); wait.style.display = "";
+    wait.textContent = (f && f.waiting) || "waiting…";
+    $("termtitle").textContent = "terminal";
+    return;
+  }
+  wait.style.display = "none";
+  $("termtitle").textContent = f.heading || "terminal" + (f.title ? " · " + f.title : "");
+  const st = { fg: null, bg: null, bold: false, ul: false, inv: false };
+  const out = document.createDocumentFragment();
+  const lines = f.text.replace(/\n$/, "").split("\n");
+  const [cx, cy] = f.cursor;
+  lines.forEach((raw, y) => {
+    const line = raw.replace(/\x1b\][^\x07\x1b]*(\x07|\x1b\\)/g, "");   // drop OSC (titles, hyperlinks)
+    const cells = [];
+    const re = /\x1b\[([0-9;?]*)([A-Za-z])/g;
+    let last = 0, m;
+    const push = s => { const k = styleOf(st); for (const ch of s) cells.push([ch, k]); };
+    while ((m = re.exec(line))) { push(line.slice(last, m.index)); if (m[2] === "m") sgr(st, m[1]); last = re.lastIndex; }
+    push(line.slice(last));
+    if (f.showCursor && y === cy) { while (cells.length <= cx) cells.push([" ", ""]); cells[cx] = [cells[cx][0], "cur"]; }
+    let run = "", key = null;
+    const flush = () => {
+      if (!run) return;
+      const sp = document.createElement("span");
+      if (key === "cur") sp.className = "cur"; else if (key) sp.style.cssText = key;
+      sp.textContent = run; out.appendChild(sp); run = "";
+    };
+    for (const [ch, k] of cells) { if (k !== key) { flush(); key = k; } run += ch; }
+    flush();
+    if (y < lines.length - 1) out.appendChild(document.createTextNode("\n"));
+  });
+  pre.replaceChildren(out);
+}
+const ts = new EventSource("/term");
+ts.onmessage = ev => renderTerm(JSON.parse(ev.data));
+
+const es = new EventSource("/events");
+es.onmessage = ev => { render(JSON.parse(ev.data)); const c = $("conn"); c.textContent = "live"; c.className = ""; };
+es.onerror = () => {
+  const c = $("conn"); c.textContent = "reconnecting…"; c.className = "bad";
+  fetch("/", { method: "HEAD", redirect: "manual" }).then(r => { if (r.type === "opaqueredirect") location.href = "/login"; });
+};
+</script>
+</body>
+</html>

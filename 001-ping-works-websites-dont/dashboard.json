@@ -1,0 +1,47 @@
+{
+  "lab": "dns-down",
+  "title": "Ping works, websites don't",
+  "ends": [
+    [
+      "client",
+      "eth1",
+      "r1",
+      "eth1"
+    ],
+    [
+      "r1",
+      "eth2",
+      "sw",
+      "eth1"
+    ],
+    [
+      "sw",
+      "eth2",
+      "dns",
+      "eth1"
+    ],
+    [
+      "sw",
+      "eth3",
+      "web",
+      "eth1"
+    ]
+  ],
+  "checks": [
+    {
+      "node": "client",
+      "cmd": "dig +short web.homelab.test",
+      "expect": "^10\\.0\\.20\\.80$",
+      "timeout": 60
+    },
+    {
+      "node": "client",
+      "cmd": "curl -sS -m 5 http://web.homelab.test",
+      "expect": "It works",
+      "timeout": 60
+    }
+  ],
+  "pings": [
+    "client:10.0.20.80"
+  ]
+}

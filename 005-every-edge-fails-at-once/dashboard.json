@@ -1,0 +1,70 @@
+{
+  "lab": "feature-limit",
+  "title": "Every edge fails at once",
+  "ends": [
+    [
+      "client",
+      "eth1",
+      "r1",
+      "eth1"
+    ],
+    [
+      "r1",
+      "eth2",
+      "sw",
+      "eth1"
+    ],
+    [
+      "sw",
+      "eth2",
+      "edge1",
+      "eth1"
+    ],
+    [
+      "sw",
+      "eth3",
+      "edge2",
+      "eth1"
+    ],
+    [
+      "sw",
+      "eth4",
+      "edge3",
+      "eth1"
+    ],
+    [
+      "sw",
+      "eth5",
+      "origin",
+      "eth1"
+    ],
+    [
+      "sw",
+      "eth6",
+      "gen",
+      "eth1"
+    ]
+  ],
+  "checks": [
+    {
+      "node": "client",
+      "cmd": "curl -s -m 3 http://10.0.20.11",
+      "expect": "It works"
+    },
+    {
+      "node": "client",
+      "cmd": "curl -s -m 3 http://10.0.20.12",
+      "expect": "It works"
+    },
+    {
+      "node": "client",
+      "cmd": "curl -s -m 3 http://10.0.20.13",
+      "expect": "It works"
+    }
+  ],
+  "pings": [
+    "client:10.0.20.11",
+    "client:10.0.20.12",
+    "client:10.0.20.13"
+  ]
+}

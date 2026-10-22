@@ -20,6 +20,18 @@ steps. Then, from this folder:
 
 If containerlab needs root on your machine, run them with `sudo`. The first `up` downloads the device images.
 
+### Optional: the live dashboard
+
+The dashboard from the videos, in your browser: the lab's map with traffic on each link, interfaces, ping
+probes, the health checks turning red and green, and an event log. In a second terminal, from this folder:
+
+```bash
+./lab.sh dashboard    # then open http://localhost:8090 (Ctrl-C to stop)
+```
+
+It needs Python 3 (already on Ubuntu and WSL) and nothing else. It only listens on your own computer; add
+`--port 8091` if 8090 is taken.
+
 ## The lab
 
 | Node | Address | Shell |
