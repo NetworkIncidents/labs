@@ -12,7 +12,7 @@ jobs:
     outputs:
       labs: ${{ steps.find.outputs.labs }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - id: find
         run: echo "labs=$(ls -d */lab.sh | xargs -n1 dirname | jq -R . | jq -sc .)" >> "$GITHUB_OUTPUT"
 
@@ -25,7 +25,7 @@ jobs:
       matrix:
         lab: ${{ fromJson(needs.find.outputs.labs) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install containerlab
         run: bash -c "$(curl -sL https://get.containerlab.dev)" _ -v 0.81.1   # _ is $0 for bash -c
       - name: up, break, fix, down

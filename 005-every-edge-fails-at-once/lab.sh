@@ -56,12 +56,12 @@ case "${1:-}" in
   fix)
     ./scripts/fix.sh
     wait_for healthy 60 && echo "Fixed: everything works." || { echo "Still broken: $why" >&2; exit 1; } ;;
-  test)   # what CI runs: up, break, broken, fix, healthy, down
-    "$0" up
-    "$0" break
+  test)   # what CI runs: up, break, broken, fix, healthy, down (./lab.sh: we're in the lab's folder now)
+    ./lab.sh up
+    ./lab.sh break
     wait_for broken 60 || { echo "FAIL: break didn't break it" >&2; exit 1; }
-    "$0" fix
-    "$0" down
+    ./lab.sh fix
+    ./lab.sh down
     echo "PASS: $LAB" ;;
   down)
     containerlab destroy -t topology.clab.yml --cleanup
