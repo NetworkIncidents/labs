@@ -64,8 +64,8 @@ def column_layout(ends):
 # ---------------------------------------------------------------- lab state
 class LabSource:
     """Polls a running lab: packets per second on each link (A side), OSPF neighbours where FRR runs."""
-    def __init__(self, lab, ends):
-        self.lab, self.ends = lab, ends
+    def __init__(self, lab, ends, ospf=True):
+        self.lab, self.ends, self.ospf = lab, ends, ospf
         self.links = [(a, b) for a, _, b, _ in ends]
         self.side = {(a, b): (a, ai) for a, ai, b, _ in ends}
         self.link_of = {}
@@ -84,7 +84,7 @@ class LabSource:
                 self.prev[link] = tx
             else:
                 rate[link] = 0.0
-        for n in self.nodes:
+        for n in self.nodes if self.ospf else ():
             try:
                 j = json.loads(dexec(f"clab-{self.lab}-{n}", "vtysh -c 'show ip ospf neighbor json' 2>/dev/null")
                                or "{}")
@@ -284,7 +284,7 @@ class Dashboard(threading.Thread):
         super().__init__(daemon=True)
         self.cfg, self.lab = cfg, cfg["lab"]
         ends = [tuple(e) for e in cfg["ends"]]
-        self.src, self.ifaces = LabSource(self.lab, ends), Interfaces(self.lab, ends)
+        self.src, self.ifaces = LabSource(self.lab, ends, ospf=False), Interfaces(self.lab, ends)
         self.feed, self.term = Feed(), Feed()
         self.log = deque(maxlen=12)
         self.pings = [PingProbe(self.lab, *str(p).split(":", 1), self.add_event) for p in cfg.get("pings", [])]
@@ -314,7 +314,7 @@ class Dashboard(threading.Thread):
                 "caption": "no lab running: ./lab.sh up" if status == "nolab" else self.cfg.get("title", ""),
                 "status": status, "broken": status == "fault",
                 "grid": [GRID_W, GRID_H], "nodes": self.src.nodes, "links": links, "ifaces": rows,
-                "neigh": [list(x) for x in state["neigh"]], "pings": [p.snapshot() for p in self.pings],
+                "neigh": [], "hideNeighbours": True, "pings": [p.snapshot() for p in self.pings],
                 "log": list(self.log)}
 
     def run(self):

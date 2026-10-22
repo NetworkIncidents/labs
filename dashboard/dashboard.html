@@ -218,6 +218,10 @@ function render(s) {
     setLabel(L.bLab, l.bIf, l.bMtu, l.mismatch);
   });
 
+  // labs without routing protocols (the downloadable ones) drop the OSPF panel; interfaces take its space
+  $("neigh").hidden = !!s.hideNeighbours;
+  $("ifaces").style.top = s.hideNeighbours ? "96px" : "";
+  $("ifaces").style.height = s.hideNeighbours ? "460px" : "";
   const nr = $("neighrows"); nr.replaceChildren();
   for (const [n, rid, st] of (s.neigh.length ? s.neigh : [["-", "-", "-"]])) {
     const tr = h("tr");
