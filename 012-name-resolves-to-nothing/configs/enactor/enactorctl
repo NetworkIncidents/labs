@@ -1,0 +1,5 @@
+#!/bin/sh
+# enactorctl slow RETRIES DELAY: the next plan this enactor applies meets a busy endpoint and retries before
+# writing (a slow spell, like the one in the post-mortem).
+[ "$1" = slow ] || { echo "usage: enactorctl slow RETRIES DELAY"; exit 2; }
+echo "$2 $3" > /etc/enactor/slow && echo "next plan: $2 retries, $3 s apart"

@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+"""dnsctl: the operator's tool for the lab DNS service.
+  dnsctl show                   each endpoint: its plan, addresses, and whether it needs repair
+  dnsctl repair <name>          point <name> at the planner's newest plan (when automation can't)
+  dnsctl guard on|off           refuse older plans, and deleting a plan in use"""
+import json, sys, urllib.request
+
+DNS, PLANNER = "http://127.0.0.1:8053", "http://10.0.20.5:8000"
+
+
+def call(method, url, body=None):
+    req = urllib.request.Request(url, method=method, data=json.dumps(body).encode() if body is not None else None,
+                                 headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=3) as r:
+        return json.loads(r.read())
+
+
+cmd = sys.argv[1:] or ["show"]
+if cmd[0] == "show":
+    for name, ep in call("GET", f"{DNS}/endpoints").items():
+        state = "NEEDS REPAIR" if ep["needs_repair"] else "ok"
+        print(f"{name}  plan {ep['plan']}  addresses: {' '.join(ep['ips']) or '(none)'}  {state}")
+elif cmd[0] == "repair":
+    plan = call("GET", f"{PLANNER}/latest")
+    ep = call("POST", f"{DNS}/repair/{cmd[1]}", plan)
+    print(f"{cmd[1]} -> plan {ep['plan']}  addresses: {' '.join(ep['ips'])}")
+elif cmd[0] == "guard":
+    g = call("POST", f"{DNS}/guard", {"on": cmd[1] == "on"})
+    print("guard " + ("on: older plans and deleting a plan in use are refused" if g["on"] else "off"))
+else:
+    sys.exit(__doc__)

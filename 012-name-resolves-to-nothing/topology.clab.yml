@@ -1,0 +1,99 @@
+# A name that resolves to nothing: a Network Incidents lab. Start it with ./lab.sh up (see README.md).
+name: dns-race
+topology:
+  nodes:
+    # an application server that uses the database service by name
+    client:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      exec:
+        - ip addr add 10.0.20.10/24 dev eth1
+        - ip link set eth0 down
+        - sh -c 'printf "nameserver 10.0.20.53\nsearch homelab.test\n" > /etc/resolv.conf'
+    sw:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      exec:
+        - ip link add br0 type bridge
+        - sh -c 'for p in eth1 eth2 eth3 eth4 eth5 eth6 eth7; do ip link set $p master br0; done'
+        - ip link set br0 up
+        - ip link set eth0 down
+    # the DNS service for homelab.test, with the update API the enactors write to (r53.py, dnsctl)
+    dns:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      binds:
+        - configs/dns:/opt/lab:ro
+      exec:
+        - ip addr add 10.0.20.53/24 dev eth1
+        - ip link set eth0 down
+        - cp /opt/lab/dnsctl /usr/local/bin/
+        - sh -c 'nohup python3 /opt/lab/r53.py >/dev/null 2>&1 &'
+    # the two load balancers db.homelab.test should point to
+    lb1:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      binds:
+        - configs/lb/lb1.html:/srv/index.html
+      exec:
+        - ip addr add 10.0.20.11/24 dev eth1
+        - ip link set eth0 down
+        - sh -c 'cd /srv && nohup python3 -m http.server 80 >/dev/null 2>&1 &'
+    lb2:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      binds:
+        - configs/lb/lb2.html:/srv/index.html
+      exec:
+        - ip addr add 10.0.20.12/24 dev eth1
+        - ip link set eth0 down
+        - sh -c 'cd /srv && nohup python3 -m http.server 80 >/dev/null 2>&1 &'
+    # makes a new plan every second
+    planner:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      binds:
+        - configs/planner:/opt/lab:ro
+      exec:
+        - ip addr add 10.0.20.5/24 dev eth1
+        - ip link set eth0 down
+        - sh -c 'nohup python3 /opt/lab/planner.py >/dev/null 2>&1 &'
+    # apply plans to the DNS service, independently of each other
+    enactor-a:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      binds:
+        - configs/enactor:/opt/lab:ro
+      exec:
+        - ip addr add 10.0.20.6/24 dev eth1
+        - ip link set eth0 down
+        - mkdir -p /etc/enactor
+        - cp /opt/lab/enactorctl /usr/local/bin/
+        - sh -c 'nohup python3 /opt/lab/enactor.py enactor-a >/dev/null 2>&1 &'
+    enactor-b:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      binds:
+        - configs/enactor:/opt/lab:ro
+      exec:
+        - ip addr add 10.0.20.7/24 dev eth1
+        - ip link set eth0 down
+        - mkdir -p /etc/enactor
+        - cp /opt/lab/enactorctl /usr/local/bin/
+        - sh -c 'nohup python3 /opt/lab/enactor.py enactor-b >/dev/null 2>&1 &'
+  # listed from the client outward; containerlab defaults veths to 9500
+  links:
+    - endpoints: ["client:eth1", "sw:eth1"]
+      mtu: 1500
+    - endpoints: ["sw:eth2", "dns:eth1"]
+      mtu: 1500
+    - endpoints: ["sw:eth3", "lb1:eth1"]
+      mtu: 1500
+    - endpoints: ["sw:eth4", "lb2:eth1"]
+      mtu: 1500
+    - endpoints: ["sw:eth5", "planner:eth1"]
+      mtu: 1500
+    - endpoints: ["sw:eth6", "enactor-a:eth1"]
+      mtu: 1500
+    - endpoints: ["sw:eth7", "enactor-b:eth1"]
+      mtu: 1500
