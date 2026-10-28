@@ -1,0 +1,47 @@
+{
+  "lab": "wrong-gateway",
+  "title": "Device can't leave its subnet",
+  "ends": [
+    [
+      "nas",
+      "eth1",
+      "sw",
+      "eth1"
+    ],
+    [
+      "sw",
+      "eth2",
+      "pc",
+      "eth1"
+    ],
+    [
+      "sw",
+      "eth3",
+      "r1",
+      "eth1"
+    ],
+    [
+      "r1",
+      "eth2",
+      "web",
+      "eth1"
+    ]
+  ],
+  "checks": [
+    {
+      "node": "nas",
+      "cmd": "ping -c 1 -W 1 10.0.20.80",
+      "expect": " 0% packet loss",
+      "timeout": 60
+    },
+    {
+      "node": "nas",
+      "cmd": "curl -s -m 5 http://10.0.20.80",
+      "expect": "It works",
+      "timeout": 60
+    }
+  ],
+  "pings": [
+    "nas:10.0.20.80"
+  ]
+}

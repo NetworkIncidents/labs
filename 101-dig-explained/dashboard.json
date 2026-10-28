@@ -1,0 +1,35 @@
+{
+  "lab": "dig-basics",
+  "title": "dig, explained",
+  "ends": [
+    [
+      "pc",
+      "eth1",
+      "sw",
+      "eth1"
+    ],
+    [
+      "sw",
+      "eth2",
+      "dns",
+      "eth1"
+    ],
+    [
+      "sw",
+      "eth3",
+      "web",
+      "eth1"
+    ]
+  ],
+  "checks": [
+    {
+      "node": "pc",
+      "cmd": "dig +short web.homelab.test",
+      "expect": "^10\\.0\\.10\\.80$",
+      "timeout": 60
+    }
+  ],
+  "pings": [
+    "pc:10.0.10.53"
+  ]
+}

@@ -1,0 +1,7 @@
+$ORIGIN homelab.test.
+$TTL 3600
+@     IN SOA dns.homelab.test. admin.homelab.test. 2026102301 7200 3600 1209600 3600
+@     IN NS  dns.homelab.test.
+dns   IN A   10.0.10.53
+web   IN A   10.0.10.80
+nas   IN A   10.0.10.30

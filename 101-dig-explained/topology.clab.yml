@@ -1,0 +1,52 @@
+# dig, explained: a Network Incidents lab. Start it with ./lab.sh up (see README.md).
+name: dig-basics
+topology:
+  nodes:
+    pc:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      exec:
+        - ip addr add 10.0.10.20/24 dev eth1
+        - ip link set eth0 down
+        # the homelab's DNS server, as the router's DHCP would hand it out
+        - sh -c 'printf "nameserver 10.0.10.53\nsearch homelab.test\n" > /etc/resolv.conf'
+    sw:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      exec:
+        - ip link add br0 type bridge
+        - sh -c 'for p in eth1 eth2 eth3; do ip link set $p master br0; done'
+        - ip link set br0 up
+        - ip link set eth0 down
+    # the DNS "box": owns the address; the DNS service runs in the coredns node, which shares its network
+    dns:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      exec:
+        - ip addr add 10.0.10.53/24 dev eth1
+        - ip link set eth0 down
+    coredns:
+      kind: linux
+      image: coredns/coredns:1.14.7   # no shell, so it can't configure its own interface
+      network-mode: container:dns
+      binds:
+        - configs/coredns/Corefile:/Corefile
+        - configs/coredns/db.homelab.test:/db.homelab.test
+      cmd: -conf /Corefile
+    web:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      binds:
+        - configs/web/index.html:/srv/index.html
+      exec:
+        - ip addr add 10.0.10.80/24 dev eth1
+        - ip link set eth0 down
+        - sh -c 'cd /srv && nohup python3 -m http.server 80 >/dev/null 2>&1 &'
+  # listed from the pc outward; containerlab defaults veths to 9500
+  links:
+    - endpoints: ["pc:eth1", "sw:eth1"]
+      mtu: 1500
+    - endpoints: ["sw:eth2", "dns:eth1"]
+      mtu: 1500
+    - endpoints: ["sw:eth3", "web:eth1"]
+      mtu: 1500

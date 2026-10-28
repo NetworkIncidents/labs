@@ -1,0 +1,63 @@
+# Device can't leave its subnet: a Network Incidents lab. Start it with ./lab.sh up (see README.md).
+name: wrong-gateway
+topology:
+  nodes:
+    # the device with the problem (think: a new NAS given a static address by hand)
+    nas:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      exec:
+        - ip addr add 10.0.10.30/24 dev eth1
+        - ip route replace default via 10.0.10.1 dev eth1
+        # its routing table gets read: drop containerlab's management interface so only the LAN shows
+        - ip link set eth0 down
+    # the home switch
+    sw:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      exec:
+        - ip link add br0 type bridge
+        - ip link set eth1 master br0
+        - ip link set eth2 master br0
+        - ip link set eth3 master br0
+        - ip link set br0 up
+        # a switch has no business on the management network: no route out to the real LAN
+        - ip link set eth0 down
+    # another device on the same LAN, set up correctly: the comparison
+    pc:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      exec:
+        - ip addr add 10.0.10.20/24 dev eth1
+        - ip route replace default via 10.0.10.1 dev eth1
+        - ip link set eth0 down
+    r1:
+      kind: linux
+      image: quay.io/frrouting/frr:10.7.1   # tested 2026-10-20
+      binds:
+        - configs/r1/daemons:/etc/frr/daemons
+        - configs/r1/frr.conf:/etc/frr/frr.conf
+        - configs/r1/vtysh.conf:/etc/frr/vtysh.conf
+      exec:
+        # keep the lab off the real network: no default route out of containerlab's management port
+        - ip route del default
+    # a server on another subnet behind the router
+    web:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      binds:
+        - configs/web/index.html:/srv/index.html
+      exec:
+        - ip addr add 10.0.20.80/24 dev eth1
+        - ip route replace default via 10.0.20.1 dev eth1
+        - sh -c 'cd /srv && nohup python3 -m http.server 80 >/dev/null 2>&1 &'
+  # containerlab defaults veths to 9500
+  links:
+    - endpoints: ["nas:eth1", "sw:eth1"]
+      mtu: 1500
+    - endpoints: ["sw:eth2", "pc:eth1"]
+      mtu: 1500
+    - endpoints: ["sw:eth3", "r1:eth1"]
+      mtu: 1500
+    - endpoints: ["r1:eth2", "web:eth1"]
+      mtu: 1500
