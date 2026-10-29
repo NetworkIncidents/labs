@@ -12,6 +12,7 @@ Install Docker and containerlab first: https://networkincidents.ca/run-the-labs/
 | [005 · Every edge fails at once](005-every-edge-fails-at-once/) | https://youtu.be/CWrIl4Byc5k |
 | [012 · A name that resolves to nothing](012-name-resolves-to-nothing/) | https://youtu.be/9TRUjkbSCUc |
 | [101 · dig, explained](101-dig-explained/) | https://youtu.be/OUhudvNqb-o |
+| [102 · curl, explained](102-curl-explained/) | https://youtu.be/XxfnwzI9b-8 |
 
 Every lab is tested weekly by GitHub Actions (up, break, fix, down; explainer labs: up, down). Labs numbered
 1xx are explainer playgrounds: nothing is broken, they are for trying the commands from the video. MIT licence:

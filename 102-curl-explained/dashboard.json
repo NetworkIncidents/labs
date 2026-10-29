@@ -1,0 +1,35 @@
+{
+  "lab": "curl-basics",
+  "title": "curl, explained",
+  "ends": [
+    [
+      "pc",
+      "eth1",
+      "sw",
+      "eth1"
+    ],
+    [
+      "sw",
+      "eth2",
+      "dns",
+      "eth1"
+    ],
+    [
+      "sw",
+      "eth3",
+      "web",
+      "eth1"
+    ]
+  ],
+  "checks": [
+    {
+      "node": "pc",
+      "cmd": "curl -s -m 3 http://web.homelab.test",
+      "expect": "It works",
+      "timeout": 60
+    }
+  ],
+  "pings": [
+    "pc:10.0.10.80"
+  ]
+}

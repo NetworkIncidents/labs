@@ -1,0 +1,7 @@
+# The homelab's DNS server (think Pi-hole). Answers for homelab.test only, from a zone file: the lab has no
+# internet, so there is nothing upstream to ask. A name that isn't in the zone gets NXDOMAIN.
+homelab.test:53 {
+    file /db.homelab.test
+    log
+    errors
+}
