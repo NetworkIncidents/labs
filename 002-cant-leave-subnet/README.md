@@ -66,6 +66,16 @@ nas      curl -m 5 http://10.0.20.80
 `scripts/break.sh` is what broke it; `scripts/fix.sh` is the fix.
 </details>
 
+## CompTIA Network+
+
+N10-009 exam objectives this lab practises:
+
+- 5.3 Incorrect default gateway
+- 5.3 Route selection: routing table, default routes
+- 5.5 Command-line tools: ip, ping
+
+Not affiliated with or endorsed by CompTIA.
+
 ---
 Images: nicolaka/netshoot:v0.16, quay.io/frrouting/frr:10.7.1. Tested on Ubuntu with Docker and containerlab
 by this repo's GitHub Actions workflow.

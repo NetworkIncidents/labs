@@ -58,6 +58,14 @@ pc       curl http://nope.homelab.test
 pc       curl http://10.0.10.53
 ```
 
+## CompTIA Network+
+
+N10-009 exam objectives this lab practises:
+
+- 1.4 Protocols and ports: HTTP (80)
+
+Not affiliated with or endorsed by CompTIA.
+
 ---
 Images: coredns/coredns:1.14.7, nicolaka/netshoot:v0.16. Tested on Ubuntu with Docker and containerlab
 by this repo's GitHub Actions workflow.

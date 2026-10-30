@@ -57,6 +57,15 @@ pc       dig @10.0.10.80 web.homelab.test
 pc       dig @10.0.10.53 +short web.homelab.test
 ```
 
+## CompTIA Network+
+
+N10-009 exam objectives this lab practises:
+
+- 3.4 Name resolution: DNS
+- 5.5 Command-line tools: dig
+
+Not affiliated with or endorsed by CompTIA.
+
 ---
 Images: coredns/coredns:1.14.7, nicolaka/netshoot:v0.16. Tested on Ubuntu with Docker and containerlab
 by this repo's GitHub Actions workflow.

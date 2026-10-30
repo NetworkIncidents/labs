@@ -77,6 +77,15 @@ gen      tail -n 2 /var/log/featuregen.log
 `scripts/break.sh` is what broke it; `scripts/fix.sh` is the fix.
 </details>
 
+## CompTIA Network+
+
+N10-009 exam objectives this lab practises:
+
+- 5.1 Troubleshooting methodology
+- 3.1 Change management and configuration management
+
+Not affiliated with or endorsed by CompTIA.
+
 ---
 Images: nicolaka/netshoot:v0.16. Tested on Ubuntu with Docker and containerlab
 by this repo's GitHub Actions workflow.
