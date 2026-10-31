@@ -1,0 +1,76 @@
+# Self-hosted app works at home, not from outside: a Network Incidents lab. Start it with ./lab.sh up (see README.md).
+name: port-forward
+topology:
+  nodes:
+    # a phone on mobile data: the outside world
+    phone:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      exec:
+        - ip addr add 198.51.100.20/24 dev eth1
+        - ip route replace default via 198.51.100.1 dev eth1
+        - ip link set eth0 down
+    # the internet in between: plain routing, no NAT
+    isp:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      labels: {role: router}
+      exec:
+        - ip addr add 198.51.100.1/24 dev eth1
+        - ip addr add 203.0.113.1/24 dev eth2
+        - sysctl -w net.ipv4.ip_forward=1
+        - ip link set eth0 down
+    # the home router (a Linux/OpenWrt-style box): NAT out, one port forward in
+    router:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      labels: {role: router}
+      exec:
+        - ip addr add 203.0.113.10/24 dev eth1
+        - ip addr add 10.0.10.1/24 dev eth2
+        - ip link set eth0 down
+        - ip route replace default via 203.0.113.1 dev eth1
+        - sysctl -w net.ipv4.ip_forward=1
+        - iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE
+        - iptables -t nat -A PREROUTING -i eth1 -p tcp --dport 8096 -j DNAT --to-destination 10.0.10.50:8096
+    sw:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      exec:
+        - ip link add br0 type bridge
+        - ip link set eth1 master br0
+        - ip link set eth2 master br0
+        - ip link set eth3 master br0
+        - ip link set br0 up
+        - ip link set eth0 down
+    # the media server (port 8096)
+    server:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      binds:
+        - configs/server/index.html:/srv/index.html
+      exec:
+        - ip addr add 10.0.10.50/24 dev eth1
+        - ip route replace default via 10.0.10.1 dev eth1
+        - ip link set eth0 down
+        - sh -c 'cd /srv && nohup python3 -m http.server 8096 >/dev/null 2>&1 &'
+    # a laptop at home
+    laptop:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      exec:
+        - ip addr add 10.0.10.20/24 dev eth1
+        - ip route replace default via 10.0.10.1 dev eth1
+        - ip link set eth0 down
+  # containerlab defaults veths to 9500
+  links:
+    - endpoints: ["phone:eth1", "isp:eth1"]
+      mtu: 1500
+    - endpoints: ["isp:eth2", "router:eth1"]
+      mtu: 1500
+    - endpoints: ["router:eth2", "sw:eth1"]
+      mtu: 1500
+    - endpoints: ["sw:eth2", "server:eth1"]
+      mtu: 1500
+    - endpoints: ["sw:eth3", "laptop:eth1"]
+      mtu: 1500

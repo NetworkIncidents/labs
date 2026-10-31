@@ -1,0 +1,47 @@
+{
+  "lab": "port-forward",
+  "title": "Self-hosted app works at home, not from outside",
+  "ends": [
+    [
+      "phone",
+      "eth1",
+      "isp",
+      "eth1"
+    ],
+    [
+      "isp",
+      "eth2",
+      "router",
+      "eth1"
+    ],
+    [
+      "router",
+      "eth2",
+      "sw",
+      "eth1"
+    ],
+    [
+      "sw",
+      "eth2",
+      "server",
+      "eth1"
+    ],
+    [
+      "sw",
+      "eth3",
+      "laptop",
+      "eth1"
+    ]
+  ],
+  "checks": [
+    {
+      "node": "phone",
+      "cmd": "curl -s -m 3 http://203.0.113.10:8096",
+      "expect": "It works",
+      "timeout": 60
+    }
+  ],
+  "pings": [
+    "laptop:10.0.10.50"
+  ]
+}
