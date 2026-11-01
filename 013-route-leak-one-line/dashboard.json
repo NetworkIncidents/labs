@@ -1,0 +1,60 @@
+{
+  "lab": "route-leak",
+  "title": "One line out, routes leak",
+  "ends": [
+    [
+      "user",
+      "eth1",
+      "transit",
+      "eth1"
+    ],
+    [
+      "transit",
+      "eth2",
+      "edge",
+      "eth1"
+    ],
+    [
+      "transit",
+      "eth3",
+      "peer",
+      "eth1"
+    ],
+    [
+      "edge",
+      "eth2",
+      "core",
+      "eth1"
+    ],
+    [
+      "core",
+      "eth2",
+      "peer",
+      "eth2"
+    ]
+  ],
+  "checks": [
+    {
+      "node": "transit",
+      "cmd": "vtysh -c \"show ip bgp 198.51.100.0/24\"",
+      "expect": "Paths: \\(1 available",
+      "timeout": 90
+    },
+    {
+      "node": "transit",
+      "cmd": "vtysh -c \"show ip bgp 192.0.2.128/25\"",
+      "expect": "64500",
+      "timeout": 60
+    },
+    {
+      "node": "user",
+      "cmd": "ping -c 1 -W 1 198.51.100.10",
+      "expect": " 0% packet loss",
+      "timeout": 60
+    }
+  ],
+  "pings": [
+    "transit:198.51.100.10",
+    "user:192.0.2.129"
+  ]
+}

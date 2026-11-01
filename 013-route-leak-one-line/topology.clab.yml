@@ -1,0 +1,67 @@
+# One line out, routes leak: a Network Incidents lab. Start it with ./lab.sh up (see README.md).
+name: route-leak
+topology:
+  kinds:
+    linux:
+      image: quay.io/frrouting/frr:10.7.1
+  nodes:
+    user:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      exec:
+        - ip addr add 203.0.113.10/24 dev eth1
+        - ip route replace default via 203.0.113.1 dev eth1
+        - ip link set eth0 down
+    transit:
+      kind: linux
+      binds:
+        - configs/transit/daemons:/etc/frr/daemons
+        - configs/transit/frr.conf:/etc/frr/frr.conf
+        - configs/transit/vtysh.conf:/etc/frr/vtysh.conf
+      exec:
+        - ip route del default
+    edge:
+      kind: linux
+      binds:
+        - configs/edge/daemons:/etc/frr/daemons
+        - configs/edge/frr.conf:/etc/frr/frr.conf
+        - configs/edge/vtysh.conf:/etc/frr/vtysh.conf
+      exec:
+        - ip route del default
+    # edge's firewall filter, in edge's network namespace (the FRR image has no iptables): from the provider,
+    # accept only traffic for our own networks, as the post-mortem describes Cloudflare's filters
+    edge-fw:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      network-mode: container:edge
+      exec:
+        - iptables -A FORWARD -i eth1 -d 192.0.2.0/24 -j ACCEPT
+        - iptables -A FORWARD -i eth1 -j REJECT --reject-with icmp-admin-prohibited
+    core:
+      kind: linux
+      binds:
+        - configs/core/daemons:/etc/frr/daemons
+        - configs/core/frr.conf:/etc/frr/frr.conf
+        - configs/core/vtysh.conf:/etc/frr/vtysh.conf
+      exec:
+        - ip route del default
+    peer:
+      kind: linux
+      binds:
+        - configs/peer/daemons:/etc/frr/daemons
+        - configs/peer/frr.conf:/etc/frr/frr.conf
+        - configs/peer/vtysh.conf:/etc/frr/vtysh.conf
+      exec:
+        - ip route del default
+  # listed from the user outward, so the map reads user -> transit -> edge/peer -> core
+  links:
+    - endpoints: ["user:eth1", "transit:eth1"]
+      mtu: 1500
+    - endpoints: ["transit:eth2", "edge:eth1"]
+      mtu: 1500
+    - endpoints: ["transit:eth3", "peer:eth1"]
+      mtu: 1500
+    - endpoints: ["edge:eth2", "core:eth1"]
+      mtu: 1500
+    - endpoints: ["core:eth2", "peer:eth2"]
+      mtu: 1500
