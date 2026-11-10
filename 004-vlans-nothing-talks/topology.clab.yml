@@ -1,0 +1,70 @@
+# Split into VLANs, now nothing talks: a Network Incidents lab. Start it with ./lab.sh up (see README.md).
+name: vlan-trunk
+topology:
+  nodes:
+    # a PC on the user VLAN (10)
+    pc:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      exec:
+        - ip addr add 10.0.10.20/24 dev eth1
+        - ip route replace default via 10.0.10.1 dev eth1
+        - ip link set eth0 down
+    # the managed switch: a VLAN-aware bridge. eth1 trunk to the router (10 and 20 tagged), eth2 access VLAN 10,
+    # eth3 and eth4 access VLAN 20
+    sw:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      exec:
+        - ip link add br0 type bridge vlan_filtering 1
+        - sh -c 'for p in eth1 eth2 eth3 eth4; do ip link set $p master br0; bridge vlan del vid 1 dev $p; done'
+        - bridge vlan add vid 10 dev eth1
+        - bridge vlan add vid 20 dev eth1
+        - bridge vlan add vid 10 dev eth2 pvid untagged
+        - bridge vlan add vid 20 dev eth3 pvid untagged
+        - bridge vlan add vid 20 dev eth4 pvid untagged
+        - ip link set br0 up
+        - ip link set eth0 down
+    # the media server on the server VLAN (20)
+    server:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      binds:
+        - configs/server/index.html:/srv/index.html
+      exec:
+        - ip addr add 10.0.20.80/24 dev eth1
+        - ip route replace default via 10.0.20.1 dev eth1
+        - ip link set eth0 down
+        - sh -c 'cd /srv && nohup python3 -m http.server 80 >/dev/null 2>&1 &'
+    # the router: router on a stick, one subinterface per VLAN on its single cable to the switch
+    router:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      labels: {role: router}
+      exec:
+        - ip link add link eth1 name eth1.10 type vlan id 10
+        - ip link add link eth1 name eth1.20 type vlan id 20
+        - ip addr add 10.0.10.1/24 dev eth1.10
+        - ip addr add 10.0.20.1/24 dev eth1.20
+        - ip link set eth1.10 up
+        - ip link set eth1.20 up
+        - sysctl -w net.ipv4.ip_forward=1
+        - ip link set eth0 down
+    # a NAS, also on the server VLAN
+    nas:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      exec:
+        - ip addr add 10.0.20.30/24 dev eth1
+        - ip route replace default via 10.0.20.1 dev eth1
+        - ip link set eth0 down
+  # containerlab defaults veths to 9500. Listed from the pc (diagram layout: pc, switch, then the rest).
+  links:
+    - endpoints: ["pc:eth1", "sw:eth2"]
+      mtu: 1500
+    - endpoints: ["sw:eth3", "server:eth1"]
+      mtu: 1500
+    - endpoints: ["sw:eth1", "router:eth1"]
+      mtu: 1500
+    - endpoints: ["sw:eth4", "nas:eth1"]
+      mtu: 1500

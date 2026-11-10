@@ -1,0 +1,41 @@
+{
+  "lab": "vlan-trunk",
+  "title": "Split into VLANs, now nothing talks",
+  "ends": [
+    [
+      "pc",
+      "eth1",
+      "sw",
+      "eth2"
+    ],
+    [
+      "sw",
+      "eth3",
+      "server",
+      "eth1"
+    ],
+    [
+      "sw",
+      "eth1",
+      "router",
+      "eth1"
+    ],
+    [
+      "sw",
+      "eth4",
+      "nas",
+      "eth1"
+    ]
+  ],
+  "checks": [
+    {
+      "node": "pc",
+      "cmd": "curl -s -m 3 http://10.0.20.80",
+      "expect": "It works",
+      "timeout": 60
+    }
+  ],
+  "pings": [
+    "pc:10.0.20.80"
+  ]
+}
