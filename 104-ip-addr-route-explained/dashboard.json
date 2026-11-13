@@ -1,0 +1,60 @@
+{
+  "lab": "iproute-basics",
+  "title": "ip addr and ip route, explained",
+  "ends": [
+    [
+      "pc",
+      "eth1",
+      "sw",
+      "eth1"
+    ],
+    [
+      "sw",
+      "eth2",
+      "nas",
+      "eth1"
+    ],
+    [
+      "sw",
+      "eth3",
+      "router",
+      "eth1"
+    ],
+    [
+      "router",
+      "eth2",
+      "sw2",
+      "eth1"
+    ],
+    [
+      "sw2",
+      "eth2",
+      "web",
+      "eth1"
+    ],
+    [
+      "sw2",
+      "eth3",
+      "printer",
+      "eth1"
+    ]
+  ],
+  "checks": [
+    {
+      "node": "pc",
+      "cmd": "ping -c 1 -W 1 10.0.20.80",
+      "expect": " 0% packet loss",
+      "timeout": 60
+    },
+    {
+      "node": "pc",
+      "cmd": "ip addr show eth1",
+      "reject": "altname",
+      "expect": "inet 10\\.0\\.10\\.20/24",
+      "timeout": 30
+    }
+  ],
+  "pings": [
+    "pc:10.0.20.80"
+  ]
+}

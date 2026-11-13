@@ -17,6 +17,7 @@ Install Docker and containerlab first: https://networkincidents.ca/run-the-labs/
 | [101 · dig, explained](101-dig-explained/) | https://youtu.be/OUhudvNqb-o |
 | [102 · curl, explained](102-curl-explained/) | https://youtu.be/XxfnwzI9b-8 |
 | [103 · ping, explained](103-ping-explained/) | https://youtu.be/-HAAZJld9kg |
+| [104 · ip addr and ip route, explained](104-ip-addr-route-explained/) | https://youtu.be/ODhnj1IHtto |
 
 Every lab is tested weekly by GitHub Actions (up, break, fix, down; explainer labs: up, down). Labs numbered
 1xx are explainer playgrounds: nothing is broken, they are for trying the commands from the video. MIT licence:
