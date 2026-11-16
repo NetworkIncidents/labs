@@ -1,0 +1,33 @@
+{
+  "lab": "dup-ip",
+  "title": "Two devices, one IP",
+  "ends": [
+    [
+      "pc",
+      "eth1",
+      "sw",
+      "eth1"
+    ],
+    [
+      "sw",
+      "eth2",
+      "nas",
+      "eth1"
+    ],
+    [
+      "sw",
+      "eth3",
+      "printer",
+      "eth1"
+    ]
+  ],
+  "checks": [
+    {
+      "node": "pc",
+      "cmd": "curl -s -m 3 http://10.0.10.30",
+      "expect": "NAS: family photos",
+      "timeout": 60
+    }
+  ],
+  "pings": []
+}

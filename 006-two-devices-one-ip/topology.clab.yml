@@ -1,0 +1,50 @@
+# Two devices, one IP: a Network Incidents lab. Start it with ./lab.sh up (see README.md).
+name: dup-ip
+topology:
+  nodes:
+    # the PC that opens the NAS's web page
+    pc:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      exec:
+        - ip link set eth1 address 02:00:00:00:00:20
+        - ip addr add 10.0.10.20/24 dev eth1
+        - ip link set eth0 down
+    # the home switch: one flat network, a plain bridge
+    sw:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      exec:
+        - ip link add br0 type bridge
+        - sh -c 'for p in eth1 eth2 eth3; do ip link set $p master br0; done'
+        - ip link set br0 up
+        - ip link set eth0 down
+    # the NAS: the rightful owner of 10.0.10.30
+    nas:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      binds:
+        - configs/nas/index.html:/srv/index.html
+      exec:
+        - ip link set eth1 address 02:00:00:00:00:30
+        - ip addr add 10.0.10.30/24 dev eth1
+        - ip link set eth0 down
+        - sh -c 'cd /srv && nohup python3 -m http.server 80 >/dev/null 2>&1 &'
+    # the new printer: has its own web admin page; break.sh gives it the NAS's address too
+    printer:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      binds:
+        - configs/printer/index.html:/srv/index.html
+      exec:
+        - ip link set eth1 address 02:00:00:00:00:99
+        - ip link set eth0 down
+        - sh -c 'cd /srv && nohup python3 -m http.server 80 >/dev/null 2>&1 &'
+  # listed from the pc outward; containerlab defaults veths to 9500
+  links:
+    - endpoints: ["pc:eth1", "sw:eth1"]
+      mtu: 1500
+    - endpoints: ["sw:eth2", "nas:eth1"]
+      mtu: 1500
+    - endpoints: ["sw:eth3", "printer:eth1"]
+      mtu: 1500

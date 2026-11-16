@@ -12,6 +12,7 @@ Install Docker and containerlab first: https://networkincidents.ca/run-the-labs/
 | [003 · Self-hosted app works at home, not from outside](003-works-at-home-not-outside/) | https://youtu.be/VlzxDQT03O8 |
 | [004 · Split into VLANs, now nothing talks](004-vlans-nothing-talks/) | https://youtu.be/v0yr-NPCG00 |
 | [005 · Every edge fails at once](005-every-edge-fails-at-once/) | https://youtu.be/CWrIl4Byc5k |
+| [006 · Two devices, one IP](006-two-devices-one-ip/) | https://youtu.be/OA4BazNJ3xQ |
 | [012 · A name that resolves to nothing](012-name-resolves-to-nothing/) | https://youtu.be/9TRUjkbSCUc |
 | [013 · One line out, routes leak](013-route-leak-one-line/) | https://youtu.be/31cBmA9SZQI |
 | [101 · dig, explained](101-dig-explained/) | https://youtu.be/OUhudvNqb-o |
