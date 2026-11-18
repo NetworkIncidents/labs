@@ -1,0 +1,44 @@
+# The OSI model in one real packet: a Network Incidents lab. Start it with ./lab.sh up (see README.md).
+name: osi-one-packet
+topology:
+  nodes:
+    pc:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      exec:
+        - ip link set eth1 address 02:00:00:00:10:20
+        - ip addr add 10.0.10.20/24 dev eth1
+        - ip route replace default via 10.0.10.1 dev eth1
+        - ip link set eth0 down
+        - sysctl -w net.ipv4.tcp_timestamps=0        # shorter TCP lines in tshark's list (no TSval/TSecr)
+    r1:
+      kind: linux
+      image: quay.io/frrouting/frr:10.7.1
+      binds:
+        - configs/r1/daemons:/etc/frr/daemons
+        - configs/r1/frr.conf:/etc/frr/frr.conf
+        - configs/r1/vtysh.conf:/etc/frr/vtysh.conf
+      exec:
+        - ip link set eth1 address 02:00:00:00:10:01
+        - ip link set eth2 address 02:00:00:00:20:01
+        - ip route del default
+        - sysctl -w net.ipv4.ip_forward=1
+        - ip link set eth0 down                     # ip route / ip neigh show only the lab networks
+    web:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      binds:
+        - configs/web/site.py:/opt/site.py:ro
+      exec:
+        - ip link set eth1 address 02:00:00:00:20:80
+        - ip addr add 10.0.20.80/24 dev eth1
+        - ip route replace default via 10.0.20.1 dev eth1
+        - ip link set eth0 down
+        - sysctl -w net.ipv4.tcp_timestamps=0
+        - sh -c 'nohup tcpdump -i eth1 -U -w /arrived.pcap tcp port 80 >/dev/null 2>&1 &'
+        - sh -c 'nohup python3 /opt/site.py >/dev/null 2>&1 &'
+  links:
+    - endpoints: ["pc:eth1", "r1:eth1"]
+      mtu: 1500
+    - endpoints: ["r1:eth2", "web:eth1"]
+      mtu: 1500

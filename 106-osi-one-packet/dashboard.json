@@ -1,0 +1,41 @@
+{
+  "lab": "osi-one-packet",
+  "title": "The OSI model in one real packet",
+  "ends": [
+    [
+      "pc",
+      "eth1",
+      "r1",
+      "eth1"
+    ],
+    [
+      "r1",
+      "eth2",
+      "web",
+      "eth1"
+    ]
+  ],
+  "checks": [
+    {
+      "node": "pc",
+      "cmd": "ping -c1 -W1 10.0.20.80",
+      "expect": "1 received",
+      "timeout": 60
+    },
+    {
+      "node": "web",
+      "cmd": "ss -ltn",
+      "expect": ":80 ",
+      "timeout": 30
+    },
+    {
+      "node": "web",
+      "cmd": "pgrep tcpdump",
+      "expect": "^\\d+",
+      "timeout": 30
+    }
+  ],
+  "pings": [
+    "pc:10.0.20.80"
+  ]
+}
