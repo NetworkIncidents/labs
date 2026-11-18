@@ -1,0 +1,118 @@
+# Every clock agrees on 2006: a Network Incidents lab. Start it with ./lab.sh up (see README.md).
+name: clocks-agree-on-2006
+topology:
+  nodes:
+    mme:
+      kind: linux
+      image: dockurr/chrony:4.9
+      entrypoint: /bin/sh
+      cmd: /start.sh
+      binds:
+        - configs/start-chrony.sh:/start.sh
+        - configs/hosts.lab:/etc/hosts.lab
+        - configs/mme/lab.conf:/etc/chrony/lab.conf
+      exec:
+        - ip addr add 10.0.40.50/24 dev eth1
+        - ip link set eth0 down
+    syd3:
+      kind: linux
+      image: dockurr/chrony:4.9
+      entrypoint: /bin/sh
+      cmd: /start.sh
+      binds:
+        - configs/start-chrony.sh:/start.sh
+        - configs/hosts.lab:/etc/hosts.lab
+        - configs/syd3/lab.conf:/etc/chrony/lab.conf
+      exec:
+        - ip addr add 10.0.40.31/24 dev eth1
+        - ip link set eth0 down
+    mel3:
+      kind: linux
+      image: dockurr/chrony:4.9
+      entrypoint: /bin/sh
+      cmd: /start.sh
+      binds:
+        - configs/start-chrony.sh:/start.sh
+        - configs/hosts.lab:/etc/hosts.lab
+        - configs/mel3/lab.conf:/etc/chrony/lab.conf
+      exec:
+        - ip addr add 10.0.40.32/24 dev eth1
+        - ip link set eth0 down
+    perth3:
+      kind: linux
+      image: dockurr/chrony:4.9
+      entrypoint: /bin/sh
+      cmd: /start.sh
+      binds:
+        - configs/start-chrony.sh:/start.sh
+        - configs/hosts.lab:/etc/hosts.lab
+        - configs/perth3/lab.conf:/etc/chrony/lab.conf
+      exec:
+        - ip addr add 10.0.40.33/24 dev eth1
+        - ip link set eth0 down
+    syd2:
+      kind: linux
+      image: dockurr/chrony:4.9
+      entrypoint: /bin/sh
+      cmd: /start.sh
+      binds:
+        - configs/start-chrony.sh:/start.sh
+        - configs/hosts.lab:/etc/hosts.lab
+        - configs/syd2/lab.conf:/etc/chrony/lab.conf
+      exec:
+        - ip addr add 10.0.40.21/24 dev eth1
+        - ip link set eth0 down
+    mel2:
+      kind: linux
+      image: dockurr/chrony:4.9
+      entrypoint: /bin/sh
+      cmd: /start.sh
+      binds:
+        - configs/start-chrony.sh:/start.sh
+        - configs/hosts.lab:/etc/hosts.lab
+        - configs/mel2/lab.conf:/etc/chrony/lab.conf
+      exec:
+        - ip addr add 10.0.40.22/24 dev eth1
+        - ip link set eth0 down
+    nmi:
+      kind: linux
+      image: dockurr/chrony:4.9
+      entrypoint: /bin/sh
+      cmd: /start.sh
+      binds:
+        - configs/start-chrony.sh:/start.sh
+        - configs/hosts.lab:/etc/hosts.lab
+        - configs/nmi/lab.conf:/etc/chrony/lab.conf
+      exec:
+        - ip addr add 10.0.40.10/24 dev eth1
+        - ip link set eth0 down
+    sw:
+      kind: linux
+      image: nicolaka/netshoot:v0.16
+      exec:
+        - ip link add br0 type bridge
+        - ip link set eth1 master br0
+        - ip link set eth2 master br0
+        - ip link set eth3 master br0
+        - ip link set eth4 master br0
+        - ip link set eth5 master br0
+        - ip link set eth6 master br0
+        - ip link set eth7 master br0
+        - ip link set br0 up
+        - ip link set eth0 down
+  # containerlab defaults veths to 9500; mme first so the map reads outward from the core node
+  links:
+    - endpoints: ["mme:eth1", "sw:eth1"]
+      mtu: 1500
+    - endpoints: ["syd3:eth1", "sw:eth2"]
+      mtu: 1500
+    - endpoints: ["mel3:eth1", "sw:eth3"]
+      mtu: 1500
+    - endpoints: ["perth3:eth1", "sw:eth4"]
+      mtu: 1500
+    - endpoints: ["syd2:eth1", "sw:eth5"]
+      mtu: 1500
+    - endpoints: ["mel2:eth1", "sw:eth6"]
+      mtu: 1500
+    - endpoints: ["nmi:eth1", "sw:eth7"]
+      mtu: 1500

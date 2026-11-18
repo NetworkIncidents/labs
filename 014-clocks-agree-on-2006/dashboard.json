@@ -1,0 +1,71 @@
+{
+  "lab": "clocks-agree-on-2006",
+  "title": "Every clock agrees on 2006",
+  "ends": [
+    [
+      "mme",
+      "eth1",
+      "sw",
+      "eth1"
+    ],
+    [
+      "syd3",
+      "eth1",
+      "sw",
+      "eth2"
+    ],
+    [
+      "mel3",
+      "eth1",
+      "sw",
+      "eth3"
+    ],
+    [
+      "perth3",
+      "eth1",
+      "sw",
+      "eth4"
+    ],
+    [
+      "syd2",
+      "eth1",
+      "sw",
+      "eth5"
+    ],
+    [
+      "mel2",
+      "eth1",
+      "sw",
+      "eth6"
+    ],
+    [
+      "nmi",
+      "eth1",
+      "sw",
+      "eth7"
+    ]
+  ],
+  "checks": [
+    {
+      "node": "mme",
+      "cmd": "chronyc tracking",
+      "expect": "Ref time \\(UTC\\)\\s*: .* 2026",
+      "timeout": 90
+    },
+    {
+      "node": "syd3",
+      "cmd": "chronyc sources",
+      "expect": "mel2\\s+2\\s+\\d+\\s+377",
+      "timeout": 60
+    },
+    {
+      "node": "perth3",
+      "cmd": "chronyc sources",
+      "expect": "\\^\\* (syd2|mel2)",
+      "timeout": 60
+    }
+  ],
+  "pings": [
+    "mme:10.0.40.33"
+  ]
+}
